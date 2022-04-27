@@ -1,6 +1,9 @@
 package huajunge.github.io.spatialman.index
 
 import com.esri.core.geometry._
+import org.locationtech.sfcurve.IndexRange
+
+import scala.collection.JavaConverters._
 
 
 class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double), alpha: Int, beta: Int) extends XZSFC(maxR, xBounds, yBounds, alpha, beta) with Serializable {
@@ -18,7 +21,7 @@ class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double
         val env = new Envelope(minX, minY, minX + w, minY + h)
         //env.in
         if (OperatorIntersects.local().execute(env, geometry, SpatialReference.create(4326), null)) {
-          signature |= 1 << ((i * beta + j))
+          signature |= (1 << (i * beta + j))
         }
       }
     }
@@ -42,12 +45,12 @@ class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double
         case (false, false) => cs += 1L + 3L * IS(i); xmin = xCenter; ymin = yCenter
       }
       i += 1
-
-      def IS(i: Int): Long = {
-        (math.pow(4, maxR - i + 1).toLong - 1L) / 3L
-      }
     }
     cs
+  }
+
+  def IS(i: Int): Long = {
+    (math.pow(4, maxR - i + 1).toLong - 1L) / 3L
   }
 
   def index(geometry: Geometry, lenient: Boolean = false): (Int, Long, Int) = {
@@ -77,6 +80,101 @@ class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double
     val sig = signature(x, y, w, h, geometry)
     val localtion = sequenceCode(mbr.xmin, mbr.ymin, l)
     (l, localtion, sig)
+  }
+
+  //  def ranges(lat1: Double, lng1: Double, lat2: Double, lng2: Double): java.util.List[IndexRange] = {
+  //
+  //  }
+
+  def ranges(lng1: Double, lat1: Double, lng2: Double, lat2: Double, indexMap: scala.collection.Map[Long, List[Int]]): java.util.List[IndexRange] = {
+    val queryWindow = QueryWindow(lng1, lat1, lng2, lat2)
+    val ranges = new java.util.ArrayList[IndexRange](100)
+    val remaining = new java.util.ArrayDeque[EE](200)
+    val levelStop = EE(-1, -1, -1, -1, -1, -1)
+    val root = EE(xBounds._1, yBounds._1, xBounds._2, yBounds._2, 0, 0L)
+    root.split()
+    root.children.asScala.foreach(remaining.add)
+    remaining.add(levelStop)
+    var level: Short = 1
+    //val executor = Executors.newFixedThreadPool(8)
+    while (!remaining.isEmpty) {
+      val next = remaining.poll
+      if (next.eq(levelStop)) {
+        // we've fully processed a level, increment our state
+        if (!remaining.isEmpty && level < maxR) {
+          level = (level + 1).toShort
+          remaining.add(levelStop)
+        }
+      } else {
+        checkValue(next, level)
+      }
+    }
+
+    def checkValue(quad: EE, level: Short): Unit = {
+      if (quad.isContained(queryWindow)) {
+        val (min, max) = (quad.elementCode, quad.elementCode + IS(level) - 1L)
+        println(quad.toString)
+        ranges.add(IndexRange(min, max, contained = true))
+      } else if (quad.insertion(queryWindow)) {
+        val key = quad.elementCode
+        val signature = quad.insertSignature(queryWindow)
+        val indexSpaces = indexMap.get(key)
+        if (indexSpaces.isDefined) {
+          println(quad.toString)
+          for (elem <- indexSpaces.get) {
+            if ((signature | elem) >= 0) {
+              val min = key | (elem.toLong << 32)
+              val range = IndexRange(min, min, contained = false)
+              ranges.add(range)
+            }
+          }
+        }
+        //executor.execute(new SignatureTask(quad.elementCode, quad.insertSignature(queryWindow)))
+        if (level < maxR) {
+          quad.split()
+          quad.children.asScala.foreach(remaining.add)
+        }
+      }
+    }
+
+    class SignatureTask(val key: Long, val signature: Int) extends Runnable {
+      override def run(): Unit = {
+        val indexSpaces = indexMap.get(key.toInt)
+        if (indexSpaces.isDefined) {
+          for (elem <- indexSpaces.get) {
+            if ((signature | elem) >= 0) {
+              val min = key | (elem.toLong << 32)
+              val range = IndexRange(min, min, contained = false)
+              ranges.add(range)
+            }
+          }
+        }
+      }
+    }
+    //executor.execute()
+    //    executor.shutdown()
+    //    executor.awaitTermination(10, TimeUnit.SECONDS)
+    //    if (ranges.size() > 0) {
+    //      ranges.sort(IndexRange.IndexRangeIsOrdered)
+    //      var current = ranges.get(0) // note: should always be at least one range
+    //      val result = ArrayBuffer.empty[IndexRange]
+    //      var i = 1
+    //      while (i < ranges.size()) {
+    //        val range = ranges.get(i)
+    //        if (range.lower <= current.upper + 1) {
+    //          current = IndexRange(current.lower, math.max(current.upper, range.upper), current.contained && range.contained)
+    //        } else {
+    //          result.append(current)
+    //          current = range
+    //        }
+    //        i += 1
+    //      }
+    //      result.append(current)
+    //      result.asJava
+    //    } else {
+    //      ranges
+    //    }
+    ranges
   }
 
   //  def index(geometry: Geometry, lenient: Boolean = false): (Int, Double, Double) = {

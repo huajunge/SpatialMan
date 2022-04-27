@@ -1,5 +1,7 @@
 package huajunge.github.io.spatialman.index
 
+import java.util
+
 class XZSFC(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double), alpha: Int, beta: Int) {
   val xLo = xBounds._1
   val xHi = xBounds._2
@@ -64,6 +66,65 @@ class XZSFC(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double), a
         val nymax = (bymax - yLo) / ySize
 
         (nxmin, nymin, nxmax, nymax)
+    }
+  }
+
+  case class QueryWindow(xmin: Double, ymin: Double, xmax: Double, ymax: Double) {
+    def insertion(x1: Double, y1: Double, x2: Double, y2: Double): Boolean = {
+      xmax >= x1 && ymax >= y1 && xmin <= x2 && ymin <= y2
+    }
+  }
+
+  case class EE(xmin: Double, ymin: Double, xmax: Double, ymax: Double, level: Int, elementCode: Long) {
+    val xLength = xmax - xmin
+    val yLength = ymax - ymin
+    val exMax = xmin + xLength * alpha
+    val eyMax = ymin + yLength * beta
+    val children = new java.util.ArrayList[EE](4)
+
+    def insertion(window: QueryWindow): Boolean = {
+      window.xmax >= xmin && window.ymax >= ymin && window.xmin <= exMax && window.ymin <= eyMax
+    }
+
+    def isContained(window: QueryWindow): Boolean = {
+      window.xmin <= xmin && window.ymin <= ymin && window.xmax >= exMax && window.ymax >= eyMax
+    }
+
+    def insertSignature(window: QueryWindow): Int = {
+      var signature = 0
+      for (i <- 0 until alpha) {
+        for (j <- 0 until beta) {
+          val minX = xmin + xLength * i
+          val minY = ymin + yLength * j
+          //env.in
+          if (window.insertion(minX, minY, minX + xLength, ymin + yLength)) {
+            signature |= (1 << (i * beta + j))
+          }
+        }
+      }
+      signature
+    }
+
+    override def toString: String = {
+      s"POLYGON (($xmin $ymin,$xmin $eyMax,$exMax $eyMax,$exMax $ymin,$xmin $ymin))"
+    }
+
+    def split(): Unit = {
+      if (children.isEmpty) {
+        val xCenter = (xmax + xmin) / 2.0
+        val yCenter = (ymax + ymin) / 2.0
+        children.add(EE(xmin, ymin, xCenter, yCenter, level + 1, elementCode + 1L))
+        children.add(EE(xCenter, ymin, xmax, yCenter, level + 1, elementCode + 1L + +1L * (math.pow(4, maxR - level).toLong - 1L) / 3L))
+        children.add(EE(xmin, yCenter, xCenter, ymax, level + 1, elementCode + 1L + +2L * (math.pow(4, maxR - level).toLong - 1L) / 3L))
+        children.add(EE(xCenter, yCenter, xmax, ymax, level + 1, elementCode + 1L + +3L * (math.pow(4, maxR - level).toLong - 1L) / 3L))
+      }
+    }
+
+    def getChildren: util.ArrayList[EE] = {
+      if (children.isEmpty) {
+        split()
+      }
+      children
     }
   }
 }
