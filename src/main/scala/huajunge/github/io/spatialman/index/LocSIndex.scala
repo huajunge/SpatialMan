@@ -114,7 +114,7 @@ class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double
       if (quad.isContained(queryWindow)) {
         val (min, max) = (quad.elementCode, quad.elementCode + IS(level) - 1L)
         println(quad.toString)
-        ranges.add(IndexRange(min, max, contained = true))
+        ranges.add(IndexRange((min << 32) | 0L, (max << 32) | 0L, contained = true))
       } else if (quad.insertion(queryWindow)) {
         val key = quad.elementCode
         val signature = quad.insertSignature(queryWindow)
@@ -123,7 +123,7 @@ class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double
           println(quad.toString)
           for (elem <- indexSpaces.get) {
             if ((signature | elem) >= 0) {
-              val min = key | (elem.toLong << 32)
+              val min = elem.toLong | (key << 32)
               val range = IndexRange(min, min, contained = false)
               ranges.add(range)
             }

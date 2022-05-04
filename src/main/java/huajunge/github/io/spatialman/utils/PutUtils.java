@@ -29,7 +29,7 @@ public class PutUtils implements Serializable {
 
     public static Put getPut(String oid, String geometryWKT, long location, int shape) {
         byte[] bytes = new byte[8 + oid.length()];
-        long indexValue = (location | ((long) shape << 32));
+        long indexValue = (shape | ((long) location << 32));
         //ByteArrays.writeInt(indexValue, bytes, 0);
         ByteArrays.writeLong(indexValue, bytes, 0);
         System.out.println(ByteArrays.readLong(bytes, 0));

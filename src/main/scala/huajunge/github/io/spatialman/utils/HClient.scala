@@ -42,7 +42,6 @@ class HClient @throws[IOException]
   def rangeQuery(lng1: Double, lat1: Double, lng2: Double, lat2: Double, indexMap: scala.collection.Map[Long, List[Int]]): java.util.List[Geometry] = {
     val time = System.currentTimeMillis()
     val ranges = locSIndex.ranges(lng1, lat1, lng2, lat2, indexMap)
-    println(s"index time: ${System.currentTimeMillis() - time}")
     val scan = new Scan
     scan.setCaching(1000)
     val filters: java.util.List[Filter] = new java.util.ArrayList[Filter](2)
@@ -60,6 +59,7 @@ class HClient @throws[IOException]
     val filterList = new FilterList(filters)
     scan.setFilter(filterList)
     var resultScanner: ResultScanner = null
+    println(s"index time: ${System.currentTimeMillis() - time}")
     try resultScanner = hTable.getScanner(scan)
     catch {
       case e: IOException =>
