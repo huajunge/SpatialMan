@@ -8,6 +8,7 @@ import scala.collection.JavaConverters._
 
 class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double), alpha: Int, beta: Int) extends XZSFC(maxR, xBounds, yBounds, alpha, beta) with Serializable {
 
+  val root: EE = EE(xBounds._1, yBounds._1, xBounds._2, yBounds._2, 0, 0L)
 
   def signature(x: Double, y: Double, w: Double, h: Double, geometry: Geometry): Int = {
     var signature = 0
@@ -91,7 +92,6 @@ class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double
     val ranges = new java.util.ArrayList[IndexRange](100)
     val remaining = new java.util.ArrayDeque[EE](200)
     val levelStop = EE(-1, -1, -1, -1, -1, -1)
-    val root = EE(xBounds._1, yBounds._1, xBounds._2, yBounds._2, 0, 0L)
     root.split()
     root.children.asScala.foreach(remaining.add)
     remaining.add(levelStop)
@@ -113,17 +113,16 @@ class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double
     def checkValue(quad: EE, level: Short): Unit = {
       if (quad.isContained(queryWindow)) {
         val (min, max) = (quad.elementCode, quad.elementCode + IS(level) - 1L)
-        println(quad.toString)
-        ranges.add(IndexRange((min << 32) | 0L, (max << 32) | 0L, contained = true))
+        //println(quad.toString)
+        ranges.add(IndexRange((min << 32.toLong) | 0L, (max << 32.toLong) | 0L, contained = true))
       } else if (quad.insertion(queryWindow)) {
         val key = quad.elementCode
-        val signature = quad.insertSignature(queryWindow)
         val indexSpaces = indexMap.get(key)
-        if (indexSpaces.isDefined) {
-          println(quad.toString)
+        if (null != quad.getShapes(indexMap)) {
+          val signature = quad.insertSignature(queryWindow)
           for (elem <- indexSpaces.get) {
             if ((signature | elem) >= 0) {
-              val min = elem.toLong | (key << 32)
+              val min = elem.toLong | (key << 32.toLong)
               val range = IndexRange(min, min, contained = false)
               ranges.add(range)
             }
@@ -209,12 +208,22 @@ class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double
 object LocSIndex extends Serializable {
   // the initial level of quads
   private val cache = new java.util.concurrent.ConcurrentHashMap[(Short, Int, Int), LocSIndex]()
+  private val cacheBounds = new java.util.concurrent.ConcurrentHashMap[(Short, Int, Int, (Double, Double), (Double, Double)), LocSIndex]()
 
   def apply(g: Short, alpha: Int, beta: Int): LocSIndex = {
     var sfc = cache.get((g, alpha, beta))
     if (sfc == null) {
       sfc = new LocSIndex(g, (-180.0, 180.0), (-90.0, 90.0), alpha, beta)
       cache.put((g, alpha, beta), sfc)
+    }
+    sfc
+  }
+
+  def apply(g: Short, xBounds: (Double, Double), yBounds: (Double, Double), alpha: Int, beta: Int): LocSIndex = {
+    var sfc = cacheBounds.get((g, alpha, beta, xBounds, yBounds))
+    if (sfc == null) {
+      sfc = new LocSIndex(g, xBounds, yBounds, alpha, beta)
+      cacheBounds.put((g, alpha, beta, xBounds, yBounds), sfc)
     }
     sfc
   }

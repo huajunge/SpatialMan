@@ -45,8 +45,9 @@ object TrajectoryLoaderTest {
 
     //val file = args(0)
     //val file = "D:\\工作文档\\data\\T-drive\\release\\tdrive\\tmp"
-    val traj = context.textFile(filePath, 2)
-    val index = new LocSIndex(g, (115.7542, 117.514), (39.289, 40.794), alpha, beta)
+    val traj = context.textFile(filePath, 1)
+    //val index = new LocSIndex(g, (115.7542, 117.514), (39.289, 40.794), alpha, beta)
+    val index = LocSIndex.apply(g, (115.7542, 117.514), (39.289, 40.794), alpha, beta)
     import com.esri.core.geometry.{Operator, OperatorFactoryLocal, OperatorImportFromWkt}
     val indexedTraj = traj.map(tra => {
       val t = tra.split("-")
@@ -55,14 +56,14 @@ object TrajectoryLoaderTest {
       //index.index(geo)
       //index.index2(geo)
       import com.esri.core.geometry.Geometry
-      val index = new LocSIndex(g, (115.7542, 117.514), (39.289, 40.794), alpha, beta)
+      val index = LocSIndex.apply(g, (115.7542, 117.514), (39.289, 40.794), alpha, beta)
       val importerWKT = OperatorFactoryLocal.getInstance.getOperator(Operator.Type.ImportFromWkt).asInstanceOf[OperatorImportFromWkt]
       val geo = importerWKT.execute(0, Geometry.Type.MultiPoint, t(1), null).asInstanceOf[MultiPoint]
       if (GeometryEngine.contains(bounds, geo, SpatialReference.create(4326))) {
         val indexValue = index.index(geo)
         val put = PutUtils.getPut(tid, t(1), indexValue._2, indexValue._3)
-        println(s"${indexValue._1},${indexValue._2}, ${indexValue._2.toBinaryString}")
-        println(s"${indexValue._2 | (indexValue._3.toLong << 32)}")
+        //println(s"${indexValue._1},${indexValue._2}, ${indexValue._2.toBinaryString}")
+        //println(s"${indexValue._3.toLong | (indexValue._2 << 32)}")
         (indexValue, put)
       } else {
         null
@@ -75,18 +76,18 @@ object TrajectoryLoaderTest {
     val client = new HClient(tableName, g, alpha, beta, index)
     //val queryRange = (116.51386, 39.99955, 116.52386, 40.00055)
     val queryRange = Array(116.71717702334188, 39.66302489185778, 116.80000369674876, 39.70368525880298)
-    val result = client.rangeQuery(queryRange(0),queryRange(1),queryRange(2),queryRange(3), indexMap)
+    val result = client.rangeQuery(queryRange(0), queryRange(1), queryRange(2), queryRange(3), indexMap)
     val time2 = System.currentTimeMillis()
-    client.rangeQuery(queryRange(0),queryRange(1),queryRange(2),queryRange(3), indexMap)
-    client.rangeQuery(queryRange(0),queryRange(1),queryRange(2),queryRange(3), indexMap)
+    client.rangeQuery(queryRange(0), queryRange(1), queryRange(2), queryRange(3), indexMap)
+    client.rangeQuery(queryRange(0), queryRange(1), queryRange(2), queryRange(3), indexMap)
     println(System.currentTimeMillis() - time2)
     println(result.size())
     val time = System.currentTimeMillis()
-    client.rangeQuery(queryRange(0),queryRange(1),queryRange(2),queryRange(3), indexMap)
-    println(System.currentTimeMillis() - time)
-    println(result.size())
+    client.rangeQuery(queryRange(0), queryRange(1), queryRange(2), queryRange(3), indexMap)
+    println("Time: " + (System.currentTimeMillis() - time))
+    println("result size: " + result.size())
     //val env = new Envelope(minX, minY, minX + w, minY + h)
-    val env = new Envelope(queryRange(0),queryRange(1),queryRange(2),queryRange(3))
+    val env = new Envelope(queryRange(0), queryRange(1), queryRange(2), queryRange(3))
     var count = 0
     println(GeometryEngine.geometryToWkt(env, 0))
     for (elem <- result.asScala) {

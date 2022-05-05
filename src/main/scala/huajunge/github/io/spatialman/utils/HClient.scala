@@ -59,7 +59,7 @@ class HClient @throws[IOException]
     val filterList = new FilterList(filters)
     scan.setFilter(filterList)
     var resultScanner: ResultScanner = null
-    println(s"index time: ${System.currentTimeMillis() - time}")
+    println(s"index time: ${System.currentTimeMillis() - time}, range size: ${rowRanges.size()}")
     try resultScanner = hTable.getScanner(scan)
     catch {
       case e: IOException =>

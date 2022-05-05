@@ -82,6 +82,8 @@ class XZSFC(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double), a
     val eyMax = ymin + yLength * beta
     val children = new java.util.ArrayList[EE](4)
 
+    var shapes: List[Int] = null
+
     def insertion(window: QueryWindow): Boolean = {
       window.xmax >= xmin && window.ymax >= ymin && window.xmin <= exMax && window.ymin <= eyMax
     }
@@ -118,6 +120,17 @@ class XZSFC(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double), a
         children.add(EE(xmin, yCenter, xCenter, ymax, level + 1, elementCode + 1L + +2L * (math.pow(4, maxR - level).toLong - 1L) / 3L))
         children.add(EE(xCenter, yCenter, xmax, ymax, level + 1, elementCode + 1L + +3L * (math.pow(4, maxR - level).toLong - 1L) / 3L))
       }
+    }
+
+    def getShapes(indexMap: scala.collection.Map[Long, List[Int]]): List[Int] = {
+      if (null != shapes) {
+        return shapes
+      }
+      val indexSpaces = indexMap.get(elementCode)
+      if (indexSpaces.isDefined) {
+        shapes = indexSpaces.get
+      }
+      shapes
     }
 
     def getChildren: util.ArrayList[EE] = {
