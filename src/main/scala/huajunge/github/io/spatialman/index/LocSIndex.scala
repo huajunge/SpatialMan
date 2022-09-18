@@ -119,14 +119,19 @@ class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double
         val key = quad.elementCode
         val indexSpaces = indexMap.get(key)
         if (null != quad.getShapes(indexMap)) {
+          //var flag = false
           val signature = quad.insertSignature(queryWindow)
           for (elem <- indexSpaces.get) {
             if ((signature | elem) >= 0) {
               val min = elem.toLong | (key << 32.toLong)
               val range = IndexRange(min, min, contained = false)
               ranges.add(range)
+              //flag = true
             }
           }
+//          if (flag) {
+//            println(quad.toString)
+//          }
         }
         //executor.execute(new SignatureTask(quad.elementCode, quad.insertSignature(queryWindow)))
         if (level < maxR) {
@@ -188,96 +193,99 @@ class LocSIndex(maxR: Short, xBounds: (Double, Double), yBounds: (Double, Double
         }
       }
 
+      ranges
+    }
 
-      class SignatureTask(val key: Long, val signature: Int) extends Runnable {
-        override def run(): Unit = {
-          val indexSpaces = indexMap.get(key.toInt)
-          if (indexSpaces.isDefined) {
-            for (elem <- indexSpaces.get) {
-              if ((signature | elem) >= 0) {
-                val min = key | (elem.toLong << 32)
-                val range = IndexRange(min, min, contained = false)
-                ranges.add(range)
-              }
+
+    class SignatureTask(val key: Long, val signature: Int) extends Runnable {
+      override def run(): Unit = {
+        val indexSpaces = indexMap.get(key.toInt)
+        if (indexSpaces.isDefined) {
+          for (elem <- indexSpaces.get) {
+            if ((signature | elem) >= 0) {
+              val min = key | (elem.toLong << 32)
+              val range = IndexRange(min, min, contained = false)
+              ranges.add(range)
             }
           }
         }
       }
-      //executor.execute()
-      //    executor.shutdown()
-      //    executor.awaitTermination(10, TimeUnit.SECONDS)
-      //    if (ranges.size() > 0) {
-      //      ranges.sort(IndexRange.IndexRangeIsOrdered)
-      //      var current = ranges.get(0) // note: should always be at least one range
-      //      val result = ArrayBuffer.empty[IndexRange]
-      //      var i = 1
-      //      while (i < ranges.size()) {
-      //        val range = ranges.get(i)
-      //        if (range.lower <= current.upper + 1) {
-      //          current = IndexRange(current.lower, math.max(current.upper, range.upper), current.contained && range.contained)
-      //        } else {
-      //          result.append(current)
-      //          current = range
-      //        }
-      //        i += 1
-      //      }
-      //      result.append(current)
-      //      result.asJava
-      //    } else {
-      //      ranges
-      //    }
-      ranges
     }
-
-    //  def index(geometry: Geometry, lenient: Boolean = false): (Int, Double, Double) = {
-    //    val mbr = new Envelope2D()
-    //    geometry.queryEnvelope2D(mbr)
-    //    val (nxmin, nymin, nxmax, nymax) = normalize(mbr.xmin, mbr.ymin, mbr.xmax, mbr.ymax, lenient)
-    //    val maxDim = math.max((nxmax - nxmin) / alpha.toDouble, (nymax - nymin) / beta.toDouble)
-    //    var l = math.floor(math.log(maxDim) / math.log(0.5)).toInt
-    //    if (l >= maxR) {
-    //      l = maxR
-    //    } else {
-    //      val w = math.pow(0.5, l)
-    //      val h = math.pow(0.5, l)
-    //
-    //      def predicateX(min: Double, max: Double): Boolean = max <= (math.floor(min / w) * w) + (alpha * w)
-    //
-    //      def predicateY(min: Double, max: Double): Boolean = max <= (math.floor(min / h) * h) + (beta * h)
-    //
-    //      if (!predicateX(nxmin, nxmax) || !predicateY(nymin, nymax)) {
-    //        l = l - 1
-    //        if (l < 0) l = 0
+    //executor.execute()
+    //    executor.shutdown()
+    //    executor.awaitTermination(10, TimeUnit.SECONDS)
+    //    if (ranges.size() > 0) {
+    //      ranges.sort(IndexRange.IndexRangeIsOrdered)
+    //      var current = ranges.get(0) // note: should always be at least one range
+    //      val result = ArrayBuffer.empty[IndexRange]
+    //      var i = 1
+    //      while (i < ranges.size()) {
+    //        val range = ranges.get(i)
+    //        if (range.lower <= current.upper + 1) {
+    //          current = IndexRange(current.lower, math.max(current.upper, range.upper), current.contained && range.contained)
+    //        } else {
+    //          result.append(current)
+    //          current = range
+    //        }
+    //        i += 1
     //      }
+    //      result.append(current)
+    //      result.asJava
+    //    } else {
+    //      ranges
     //    }
-    //    val w = math.pow(0.5, l)
-    //    val x = math.floor(nxmin / w) * w
-    //    val y = math.floor(nymin / w) * w
-    //    //val sig = signature(x, y, w, geometry)
-    //    (l, x * xSize + xLo, y * ySize + yLo)
-    //  }
+    ranges
   }
 
-  object LocSIndex extends Serializable {
-    // the initial level of quads
-    private val cache = new java.util.concurrent.ConcurrentHashMap[(Short, Int, Int), LocSIndex]()
-    private val cacheBounds = new java.util.concurrent.ConcurrentHashMap[(Short, Int, Int, (Double, Double), (Double, Double)), LocSIndex]()
+  //  def index(geometry: Geometry, lenient: Boolean = false): (Int, Double, Double) = {
+  //    val mbr = new Envelope2D()
+  //    geometry.queryEnvelope2D(mbr)
+  //    val (nxmin, nymin, nxmax, nymax) = normalize(mbr.xmin, mbr.ymin, mbr.xmax, mbr.ymax, lenient)
+  //    val maxDim = math.max((nxmax - nxmin) / alpha.toDouble, (nymax - nymin) / beta.toDouble)
+  //    var l = math.floor(math.log(maxDim) / math.log(0.5)).toInt
+  //    if (l >= maxR) {
+  //      l = maxR
+  //    } else {
+  //      val w = math.pow(0.5, l)
+  //      val h = math.pow(0.5, l)
+  //
+  //      def predicateX(min: Double, max: Double): Boolean = max <= (math.floor(min / w) * w) + (alpha * w)
+  //
+  //      def predicateY(min: Double, max: Double): Boolean = max <= (math.floor(min / h) * h) + (beta * h)
+  //
+  //      if (!predicateX(nxmin, nxmax) || !predicateY(nymin, nymax)) {
+  //        l = l - 1
+  //        if (l < 0) l = 0
+  //      }
+  //    }
+  //    val w = math.pow(0.5, l)
+  //    val x = math.floor(nxmin / w) * w
+  //    val y = math.floor(nymin / w) * w
+  //    //val sig = signature(x, y, w, geometry)
+  //    (l, x * xSize + xLo, y * ySize + yLo)
+  //  }
+}
 
-    def apply(g: Short, alpha: Int, beta: Int): LocSIndex = {
-      var sfc = cache.get((g, alpha, beta))
-      if (sfc == null) {
-        sfc = new LocSIndex(g, (-180.0, 180.0), (-90.0, 90.0), alpha, beta)
-        cache.put((g, alpha, beta), sfc)
-      }
-      sfc
-    }
+object LocSIndex extends Serializable {
+  // the initial level of quads
+  private val cache = new java.util.concurrent.ConcurrentHashMap[(Short, Int, Int), LocSIndex]()
+  private val cacheBounds = new java.util.concurrent.ConcurrentHashMap[(Short, Int, Int, (Double, Double), (Double, Double)), LocSIndex]()
 
-    def apply(g: Short, xBounds: (Double, Double), yBounds: (Double, Double), alpha: Int, beta: Int): LocSIndex = {
-      var sfc = cacheBounds.get((g, alpha, beta, xBounds, yBounds))
-      if (sfc == null) {
-        sfc = new LocSIndex(g, xBounds, yBounds, alpha, beta)
-        cacheBounds.put((g, alpha, beta, xBounds, yBounds), sfc)
-      }
-      sfc
+  def apply(g: Short, alpha: Int, beta: Int): LocSIndex = {
+    var sfc = cache.get((g, alpha, beta))
+    if (sfc == null) {
+      sfc = new LocSIndex(g, (-180.0, 180.0), (-90.0, 90.0), alpha, beta)
+      cache.put((g, alpha, beta), sfc)
     }
+    sfc
   }
+
+  def apply(g: Short, xBounds: (Double, Double), yBounds: (Double, Double), alpha: Int, beta: Int): LocSIndex = {
+    var sfc = cacheBounds.get((g, alpha, beta, xBounds, yBounds))
+    if (sfc == null) {
+      sfc = new LocSIndex(g, xBounds, yBounds, alpha, beta)
+      cacheBounds.put((g, alpha, beta, xBounds, yBounds), sfc)
+    }
+    sfc
+  }
+}
