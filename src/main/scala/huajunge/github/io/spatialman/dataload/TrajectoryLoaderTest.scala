@@ -16,6 +16,8 @@ import scala.collection.JavaConverters._
 object TrajectoryLoaderTest {
   def main(args: Array[String]): Unit = {
     val hbaseConf = HBaseConfiguration.create()
+//    hbaseConf.set("hbase.zookeeper.quorum", "127.0.0.1"); //hbase 服务地址
+//    hbaseConf.set("hbase.zookeeper.property.clientPort", "2181"); //端口号默认2128不用改
     val connection = ConnectionFactory.createConnection(hbaseConf)
     val admin = connection.getAdmin
     val filePath = args(0)
@@ -24,15 +26,23 @@ object TrajectoryLoaderTest {
     val alpha = args(3).toInt
     val beta = args(4).toInt
     val table = new HTableDescriptor(TableName.valueOf(tableName))
+    println("开始插入")
+    println("建表")
     if (admin.tableExists(table.getTableName)) {
+      println("disableTable")
       admin.disableTable(table.getTableName)
       admin.deleteTable(table.getTableName)
     }
     if (!admin.tableExists(table.getTableName)) {
+      println("建表")
       val table = new HTableDescriptor(TableName.valueOf(tableName))
+      println("addFamily")
       table.addFamily(new HColumnDescriptor(DEFAULT_CF))
+      println("createTable")
       admin.createTable(table)
     }
+    println("建表ok")
+    println("开始插入")
     val job = new JobConf(hbaseConf)
     job.setOutputFormat(classOf[TableOutputFormat])
     job.set(TableOutputFormat.OUTPUT_TABLE, tableName)
